@@ -1,4 +1,5 @@
-from cli import run_cli
+from ui.cli import CLIInterface
 
 if __name__ == "__main__":
-    run_cli()
+    app = CLIInterface()
+    app.run()
