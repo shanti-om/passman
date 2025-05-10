@@ -74,14 +74,21 @@ class DatabaseManager:
             return cursor.fetchall()
 
     def update_entry(self, entry: PasswordEntry) -> bool:
-        """Обновляет существующую запись."""
+        """Обновляет запись в БД с дополнительными проверками."""
         if not entry.id:
             self.console.print("[red]Ошибка: запись не имеет ID![/]")
             return False
 
         try:
             with self._get_connection() as conn:
+                # Проверяем, существует ли запись
                 cursor = conn.cursor()
+                cursor.execute("SELECT 1 FROM entries WHERE id = ?", (entry.id,))
+                if not cursor.fetchone():
+                    self.console.print("[red]Запись не существует![/]")
+                    return False
+
+                # Выполняем обновление
                 cursor.execute(
                     """UPDATE entries 
                     SET name = ?, login = ?, password = ?, etc = ?, description = ?
@@ -89,7 +96,13 @@ class DatabaseManager:
                     (entry.name, entry.login, entry.password, entry.etc, entry.description, entry.id)
                 )
                 conn.commit()
-                return cursor.rowcount > 0  # Возвращает True если запись была обновлена
+
+                if cursor.rowcount == 0:
+                    self.console.print("[yellow]Данные не изменились[/]")
+                    return False
+
+                return True
+
         except sqlite3.Error as e:
             self.console.print(f"[red]Ошибка БД: {e}[/]")
             return False

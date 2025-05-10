@@ -133,7 +133,7 @@ class CLIInterface:
             self.console.print("[red]Неверный ID![/]")
 
     def _handle_edit_entry(self, entry_id: int):
-        """Редактирует существующую запись."""
+        """Редактирует существующую запись с проверкой изменений."""
         entry = self.db.get_entry(entry_id)
         if not entry:
             self.console.print("[red]Запись не найдена![/]")
@@ -141,22 +141,44 @@ class CLIInterface:
 
         self.console.print("\n[bold]Редактирование записи:[/]")
 
-        # Собираем новые данные
-        new_data = {
+        # Сохраняем оригинальные значения для сравнения
+        original_values = {
+            'name': entry.name,
+            'login': entry.login,
+            'password': entry.password,
+            'description': entry.description
+        }
+
+        # Получаем новые значения
+        new_values = {
             'name': Prompt.ask("Название", default=entry.name),
             'login': Prompt.ask("Логин", default=entry.login),
             'password': Prompt.ask("Пароль", password=True, default=entry.password),
             'description': Prompt.ask("Описание", default=entry.description)
         }
 
+        # Проверяем, были ли изменения
+        if all(new_values[key] == original_values[key] for key in new_values):
+            self.console.print("[yellow]Нет изменений для сохранения[/]")
+            return
+
+        # Показываем различия
+        self.console.print("\n[bold]Изменения:[/]")
+        for key in new_values:
+            if new_values[key] != original_values[key]:
+                self.console.print(
+                    f"{key}: [red]{original_values[key]}[/] → [green]{new_values[key]}[/]"
+                )
+
+        # Подтверждение сохранения
         if Confirm.ask("\nСохранить изменения?"):
-            # Обновляем только измененные поля
-            entry.name = new_data['name']
-            entry.login = new_data['login']
-            entry.password = new_data['password']
-            entry.description = new_data['description']
+            # Обновляем объект записи
+            entry.name = new_values['name']
+            entry.login = new_values['login']
+            entry.password = new_values['password']
+            entry.description = new_values['description']
 
             if self.db.update_entry(entry):
-                self.console.print("[green]Запись обновлена![/]")
+                self.console.print("[green]Запись успешно обновлена![/]")
             else:
-                self.console.print("[red]Ошибка при обновлении![/]")
+                self.console.print("[red]Ошибка при обновлении записи![/]")
